@@ -124,6 +124,35 @@ const generateScript = (config = {}) => {
 
   const blocks = [];
   const wants = (...ids) => ids.some((id) => selected.has(id));
+  const needsSudo = wants(
+    "base",
+    "brew",
+    "brew-packages",
+    "desktop-apps",
+    "chrome",
+    "vscode",
+    "github-cli",
+    "onepassword",
+    "cloud-cli",
+    "codex-desktop",
+    "docker",
+    "azure",
+    "mkcert"
+  );
+
+  if (needsSudo) {
+    blocks.push(section("Checking sudo access", [
+      "if ! sudo -n true 2>/dev/null; then",
+      "  if [[ -t 0 ]]; then",
+      "    sudo -v",
+      "  else",
+      "    echo 'This selected setup needs sudo, but the inline runner has no password prompt.' >&2",
+      "    echo 'Use the Run tab -> Open generated script in terminal, then rerun this selection.' >&2",
+      "    exit 2",
+      "  fi",
+      "fi"
+    ]));
+  }
 
   if (wants("base")) {
     blocks.push(section("Installing base Ubuntu tools", [
@@ -136,7 +165,10 @@ const generateScript = (config = {}) => {
 
   if (wants("brew", "brew-packages")) {
     blocks.push(section("Installing Homebrew for Linux", [
-      "if ! have brew; then NONINTERACTIVE=1 /bin/bash -c \"$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)\"; fi",
+      "if ! have brew; then",
+      "  sudo -v",
+      "  NONINTERACTIVE=1 /bin/bash -c \"$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)\"",
+      "fi",
       "eval \"$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)\"",
       "brew update"
     ]));
