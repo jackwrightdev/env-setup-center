@@ -8,11 +8,12 @@ import { fileURLToPath } from "node:url";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const publicDir = path.join(__dirname, "public");
-const generatedDir = process.env.ENV_SETUP_CENTER_DATA_DIR || path.join(__dirname, "generated");
 const port = Number(process.env.PORT || 4177);
 
 let clients = new Set();
 let currentRun = null;
+
+const getGeneratedDir = () => process.env.ENV_SETUP_CENTER_DATA_DIR || path.join(__dirname, "generated");
 
 const json = (res, status, body) => {
   const payload = JSON.stringify(body);
@@ -388,6 +389,7 @@ const launchTerminal = (command) =>
   });
 
 const saveGeneratedScript = async (config) => {
+  const generatedDir = getGeneratedDir();
   await mkdir(generatedDir, { recursive: true });
   const script = generateScript(config);
   const file = path.join(generatedDir, "selected-bootstrap.sh");
@@ -397,6 +399,7 @@ const saveGeneratedScript = async (config) => {
 
 const startRun = async (config) => {
   if (currentRun) throw new Error("A setup run is already in progress.");
+  const generatedDir = getGeneratedDir();
   const { file } = await saveGeneratedScript(config);
   const logFile = path.join(generatedDir, "last-run.log");
   const logStream = createWriteStream(logFile, { flags: "a" });
