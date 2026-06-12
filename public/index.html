@@ -142,15 +142,14 @@
                 <span>Use terminal for sudo prompts</span>
               </div>
               <div class="run-actions">
-                <button class="primary-button" id="open-terminal">Open generated script in terminal</button>
-                <button id="run-inline">Run inline and stream logs</button>
+                <button class="primary-button" id="open-terminal">Run in terminal</button>
               </div>
-              <p class="muted">Inline runs are useful for non-interactive sections. Terminal mode is better for first-time setup because sudo and login flows can prompt cleanly.</p>
+              <p class="muted">Setup always runs in a terminal so sudo, package installers, and login flows can prompt cleanly.</p>
             </section>
             <section class="panel log-panel">
               <div class="panel-head">
-                <h3>Logs</h3>
-                <span id="run-state">Idle</span>
+                <h3>Run Notes</h3>
+                <span id="run-state">Terminal</span>
               </div>
               <pre id="log-output"></pre>
             </section>

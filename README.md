@@ -27,7 +27,7 @@ http://127.0.0.1:4177
 ## Notes
 
 - Terminal mode is the best way to run first-time installs because `sudo` and login prompts need a real terminal.
-- Inline mode is useful for already-authenticated, non-interactive sections.
+- Runs always open in a system terminal so sudo and installer prompts work normally.
 - Codex Desktop defaults to your local `~/codex-desktop-linux` wrapper and prefers an existing local `.deb`.
 
 ## Package
@@ -46,8 +46,8 @@ npm run dist:deb
 
 Current artifacts:
 
-- `dist/Environment Setup Center-0.1.3-x86_64.AppImage`
-- `dist/Environment Setup Center-0.1.3-amd64.deb`
+- `dist/Environment Setup Center-0.1.4-x86_64.AppImage`
+- `dist/Environment Setup Center-0.1.4-amd64.deb`
 
 When using the public GitHub repo, download packaged binaries from the Releases page rather than from git history.
 
@@ -66,5 +66,5 @@ To install the AppImage into `~/.local/opt`, add a launcher in `~/.local/bin`, a
 Install the Debian package directly:
 
 ```bash
-sudo apt install ./dist/Environment\ Setup\ Center-0.1.3-amd64.deb
+sudo apt install ./dist/Environment\ Setup\ Center-0.1.4-amd64.deb
 ```

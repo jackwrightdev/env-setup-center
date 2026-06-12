@@ -128,7 +128,7 @@ const modules = [
 ];
 
 const authActions = [
-  ["sudo", "Sudo", "Unlock sudo for inline installer runs"],
+  ["sudo", "Sudo", "Unlock sudo for terminal installer runs"],
   ["github", "GitHub", "Run gh auth login"],
   ["gcloud", "Google Cloud", "Run gcloud init"],
   ["aws", "AWS", "Run aws configure"],
@@ -382,39 +382,14 @@ const wireActions = () => {
       toast(error.message);
     }
   });
-  $("#run-inline").addEventListener("click", async () => {
-    try {
-      $("#log-output").textContent = "";
-      $("#run-state").textContent = "Running";
-      await api("/api/run", {
-        method: "POST",
-        body: JSON.stringify(config())
-      });
-    } catch (error) {
-      $("#run-state").textContent = "Idle";
-      toast(error.message);
-    }
-  });
+  $("#log-output").textContent = "Runs now open in a system terminal. The generated script asks for sudo before installer steps begin.";
 };
 
 const wireEvents = () => {
   const events = new EventSource("/api/events");
-  events.addEventListener("run-start", (event) => {
-    const data = JSON.parse(event.data);
-    $("#run-state").textContent = "Running";
-    $("#script-path").textContent = data.file;
-  });
-  events.addEventListener("log", (event) => {
-    const data = JSON.parse(event.data);
-    const log = $("#log-output");
-    log.textContent += data.text;
-    log.scrollTop = log.scrollHeight;
-  });
-  events.addEventListener("run-end", (event) => {
-    const data = JSON.parse(event.data);
-    $("#run-state").textContent = data.code === 0 ? "Complete" : `Exited ${data.code}`;
-    toast(data.code === 0 ? "Setup complete" : "Setup exited with errors");
-  });
+  events.addEventListener("run-start", () => {});
+  events.addEventListener("log", () => {});
+  events.addEventListener("run-end", () => {});
 };
 
 const init = async () => {

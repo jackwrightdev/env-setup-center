@@ -146,8 +146,7 @@ const generateScript = (config = {}) => {
       "  if [[ -t 0 ]]; then",
       "    sudo -v",
       "  else",
-      "    echo 'This selected setup needs sudo, but the inline runner has no password prompt.' >&2",
-      "    echo 'Use the Run tab -> Open generated script in terminal, then rerun this selection.' >&2",
+      "    echo 'This selected setup needs sudo. Run it from a terminal so sudo can prompt.' >&2",
       "    exit 2",
       "  fi",
       "fi",
@@ -434,29 +433,6 @@ const saveGeneratedScript = async (config) => {
   return { file, script };
 };
 
-const startRun = async (config) => {
-  if (currentRun) throw new Error("A setup run is already in progress.");
-  const generatedDir = getGeneratedDir();
-  const { file } = await saveGeneratedScript(config);
-  const logFile = path.join(generatedDir, "last-run.log");
-  const logStream = createWriteStream(logFile, { flags: "a" });
-  currentRun = { file, logFile };
-  sendEvent("run-start", { file, logFile });
-  const child = spawn("bash", [file], { cwd: generatedDir, env: process.env });
-  const onData = (chunk) => {
-    const text = chunk.toString();
-    logStream.write(text);
-    sendEvent("log", { text });
-  };
-  child.stdout.on("data", onData);
-  child.stderr.on("data", onData);
-  child.on("close", (code) => {
-    logStream.end();
-    sendEvent("run-end", { code, logFile });
-    currentRun = null;
-  });
-};
-
 const serveStatic = async (req, res) => {
   const url = new URL(req.url, `http://${req.headers.host}`);
   const rawPath = decodeURIComponent(url.pathname === "/" ? "/index.html" : url.pathname);
@@ -488,10 +464,6 @@ const server = createServer(async (req, res) => {
     }
     if (url.pathname === "/api/save" && req.method === "POST") {
       return json(res, 200, await saveGeneratedScript(await readBody(req)));
-    }
-    if (url.pathname === "/api/run" && req.method === "POST") {
-      await startRun(await readBody(req));
-      return json(res, 200, { ok: true });
     }
     if (url.pathname === "/api/open-terminal" && req.method === "POST") {
       const { file } = await saveGeneratedScript(await readBody(req));
