@@ -1,131 +1,6 @@
-const modules = [
-  {
-    id: "base",
-    title: "Linux Base",
-    description: "Core packages, build tools, Python, ADB/Fastboot, Flatpak, SSH, rsync, jq, FUSE, and Flutter Linux desktop dependencies.",
-    tags: ["apt", "dnf", "pacman"],
-    recommended: true
-  },
-  {
-    id: "brew",
-    title: "Homebrew",
-    description: "Installs Homebrew for Linux and prepares it for runtime packages and service management.",
-    tags: ["brew"],
-    recommended: true
-  },
-  {
-    id: "brew-packages",
-    title: "Brew Runtimes",
-    description: "Node, OpenJDK 17, PHP, Composer, MySQL, PostgreSQL, Watchman, and GCC.",
-    tags: ["node", "java", "db"],
-    recommended: true
-  },
-  {
-    id: "flutter",
-    title: "Flutter",
-    description: "Clones or updates Flutter stable at your selected path.",
-    tags: ["mobile", "sdk"],
-    recommended: true
-  },
-  {
-    id: "desktop-apps",
-    title: "Desktop Apps",
-    description: "Android Studio, Slack, Postman, Termius, Remmina, and DBeaver using Flatpak where possible.",
-    tags: ["flatpak"],
-    recommended: true
-  },
-  {
-    id: "chrome",
-    title: "Google Chrome",
-    description: "Installs Chrome through native repositories where available, with Chromium fallback on Arch-style systems.",
-    tags: ["browser", "native"],
-    recommended: true
-  },
-  {
-    id: "vscode",
-    title: "VS Code",
-    description: "Installs VS Code through Microsoft repositories or Arch/Manjaro package tooling.",
-    tags: ["editor", "native"],
-    recommended: true
-  },
-  {
-    id: "github-cli",
-    title: "GitHub CLI",
-    description: "Installs gh through Homebrew for a consistent cross-distro path.",
-    tags: ["auth", "git", "brew"],
-    recommended: true
-  },
-  {
-    id: "cloud-cli",
-    title: "Cloud CLIs",
-    description: "Installs Google Cloud CLI and AWS CLI through Homebrew.",
-    tags: ["gcloud", "aws", "brew"],
-    recommended: true
-  },
-  {
-    id: "onepassword",
-    title: "1Password CLI",
-    description: "Installs op through the Debian repository on Ubuntu/Debian, with Homebrew fallback elsewhere.",
-    tags: ["secrets"],
-    recommended: true
-  },
-  {
-    id: "codex-cli",
-    title: "Codex CLI",
-    description: "Installs the Codex CLI with the official standalone Linux installer.",
-    tags: ["openai"],
-    recommended: true
-  },
-  {
-    id: "codex-desktop",
-    title: "Codex Desktop Linux",
-    description: "Installs from your codex-desktop-linux wrapper project, preferring an existing local .deb.",
-    tags: ["local repo", "gui"],
-    recommended: true
-  },
-  {
-    id: "shell-setup",
-    title: "Shell Setup",
-    description: "Writes PATH, Android, Flutter, Java, Homebrew, and direnv setup into ~/.bashrc.",
-    tags: ["bashrc"],
-    recommended: true
-  },
-  {
-    id: "docker",
-    title: "Docker Engine",
-    description: "Installs Docker Engine, Compose plugin, Buildx, and adds your user to the docker group.",
-    tags: ["containers"],
-    recommended: false
-  },
-  {
-    id: "kubernetes",
-    title: "Kubernetes Tools",
-    description: "Installs kubectl and helm through Homebrew.",
-    tags: ["k8s"],
-    recommended: false
-  },
-  {
-    id: "terraform",
-    title: "Terraform",
-    description: "Installs Terraform through Homebrew.",
-    tags: ["infra"],
-    recommended: false
-  },
-  {
-    id: "azure",
-    title: "Azure CLI",
-    description: "Installs Azure CLI using Microsoft's Debian installer.",
-    tags: ["cloud"],
-    recommended: false
-  },
-  {
-    id: "mkcert",
-    title: "mkcert",
-    description: "Installs mkcert and nss, then creates a trusted local CA.",
-    tags: ["https"],
-    recommended: false
-  }
-];
+let modules = [];
+let distroProfiles = [];
+let vmTestSuites = [];
 
 const authActions = [
   ["sudo", "Sudo", "Unlock sudo for terminal installer runs"],
@@ -138,7 +13,7 @@ const authActions = [
 ];
 
 const state = {
-  selected: new Set(modules.filter((module) => module.recommended).map((module) => module.id)),
+  selected: new Set(),
   status: null
 };
 
@@ -162,6 +37,14 @@ const api = async (path, options = {}) => {
   return body;
 };
 
+const loadManifest = async () => {
+  const manifest = await api("/api/manifest");
+  modules = manifest.modules || [];
+  distroProfiles = manifest.distroProfiles || [];
+  vmTestSuites = manifest.vmTestSuites || [];
+  state.selected = new Set(modules.filter((module) => module.recommended).map((module) => module.id));
+};
+
 const config = () => ({
   selected: Array.from(state.selected),
   startServices: $("#start-services").checked,
@@ -173,6 +56,13 @@ const config = () => ({
   gitName: $("#git-name").value.trim(),
   gitEmail: $("#git-email").value.trim()
 });
+
+const renderDistroProfiles = () => {
+  const select = $("#distro-profile");
+  select.innerHTML = distroProfiles
+    .map((profile) => `<option value="${profile.id}">${profile.title}</option>`)
+    .join("");
+};
 
 const renderModules = () => {
   $("#module-grid").innerHTML = modules
@@ -203,6 +93,35 @@ const renderModules = () => {
       else state.selected.delete(input.dataset.module);
       updateSelectionCount();
       refreshScript();
+    });
+  });
+};
+
+const renderTestSuites = () => {
+  $("#test-grid").innerHTML = vmTestSuites
+    .map((suite) => `
+      <article class="module-card test-card">
+        <div class="module-top">
+          <div>
+            <h3>${suite.title}</h3>
+            <div class="module-meta">Profile: ${suite.profile}</div>
+          </div>
+          <span class="pill missing">Untested</span>
+        </div>
+        <ol class="check-list">
+          ${suite.checks.map((check) => `<li>${check}</li>`).join("")}
+        </ol>
+        <button data-test-profile="${suite.profile}">Use Profile</button>
+      </article>
+    `)
+    .join("");
+
+  $$("[data-test-profile]").forEach((button) => {
+    button.addEventListener("click", () => {
+      $("#distro-profile").value = button.dataset.testProfile;
+      refreshScript();
+      if (state.status) renderStatus(state.status);
+      toast(`Profile set to ${button.dataset.testProfile}`);
     });
   });
 };
@@ -394,8 +313,11 @@ const wireEvents = () => {
 };
 
 const init = async () => {
+  await loadManifest();
+  renderDistroProfiles();
   renderModules();
   renderAuth();
+  renderTestSuites();
   wireNavigation();
   wireActions();
   wireEvents();

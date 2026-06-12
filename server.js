@@ -5,6 +5,7 @@ import { createWriteStream, existsSync } from "node:fs";
 import path from "node:path";
 import os from "node:os";
 import { fileURLToPath } from "node:url";
+import { distroProfiles, installModules, moduleSteps, sudoModules, vmTestSuites } from "./manifests/linux.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const publicDir = path.join(__dirname, "public");
@@ -112,6 +113,58 @@ const section = (title, lines) => [
   ""
 ].join("\n");
 
+const dynamicModuleSteps = {
+  flutter: ({ flutterDir }) => [
+    `FLUTTER_DIR=${q(flutterDir)}`,
+    "mkdir -p \"$(dirname \"$FLUTTER_DIR\")\"",
+    "if [[ -d \"$FLUTTER_DIR/.git\" ]]; then git -C \"$FLUTTER_DIR\" fetch --depth=1 origin stable && git -C \"$FLUTTER_DIR\" checkout stable && git -C \"$FLUTTER_DIR\" pull --ff-only; else git clone --depth=1 --branch stable https://github.com/flutter/flutter.git \"$FLUTTER_DIR\"; fi"
+  ],
+  "codex-desktop": ({ codexMode, codexRepo }) => [
+    `CODEX_DESKTOP_REPO_DIR=${q(codexRepo)}`,
+    `CODEX_DESKTOP_INSTALL_MODE=${q(codexMode)}`,
+    "if [[ ! -d \"$CODEX_DESKTOP_REPO_DIR/.git\" ]]; then git clone https://github.com/ilysenko/codex-desktop-linux.git \"$CODEX_DESKTOP_REPO_DIR\"; fi",
+    "case \"$CODEX_DESKTOP_INSTALL_MODE\" in",
+    "  auto)",
+    "    deb=\"$(latest_file \"$CODEX_DESKTOP_REPO_DIR/dist/codex-desktop_*.deb\" || true)\"",
+    "    if have codex-desktop; then echo \"codex-desktop already installed\"; elif [[ -n \"$deb\" && \"$DISTRO_ID\" =~ ^(ubuntu|debian)$ ]]; then apt_install \"$deb\"; else make -C \"$CODEX_DESKTOP_REPO_DIR\" install-user-app; fi",
+    "    ;;",
+    "  deb) [[ \"$DISTRO_ID\" =~ ^(ubuntu|debian)$ ]] || { echo '.deb mode only works on Debian/Ubuntu profiles.' >&2; exit 1; }; deb=\"$(latest_file \"$CODEX_DESKTOP_REPO_DIR/dist/codex-desktop_*.deb\" || true)\"; [[ -n \"$deb\" ]] || { echo \"No local .deb found\" >&2; exit 1; }; apt_install \"$deb\" ;;",
+    "  user) make -C \"$CODEX_DESKTOP_REPO_DIR\" install-user-app ;;",
+    "  native) make -C \"$CODEX_DESKTOP_REPO_DIR\" bootstrap-native ;;",
+    "esac"
+  ],
+  "shell-setup": ({ androidHome, flutterDir }) => [
+    `ANDROID_HOME_DIR=${q(androidHome)}`,
+    `FLUTTER_DIR=${q(flutterDir)}`,
+    "MARKER_START='# >>> dev-workstation bootstrap >>>'",
+    "MARKER_END='# <<< dev-workstation bootstrap <<<'",
+    "if ! grep -Fq \"$MARKER_START\" \"$HOME/.bashrc\"; then",
+    "cat >>\"$HOME/.bashrc\" <<EOF",
+    "",
+    "$MARKER_START",
+    "if command -v brew >/dev/null 2>&1; then",
+    "  export HOMEBREW_PREFIX=\"$(brew --prefix)\"",
+    "  export PATH=\"$HOMEBREW_PREFIX/bin:$HOMEBREW_PREFIX/sbin:$HOME/.local/bin:$PATH\"",
+    "  export JAVA_HOME=\"$(brew --prefix openjdk@17)/libexec/openjdk.jdk/Contents/Home\"",
+    "  export PATH=\"$JAVA_HOME/bin:$PATH\"",
+    "fi",
+    "export ANDROID_HOME=\"$ANDROID_HOME_DIR\"",
+    "export ANDROID_SDK_ROOT=\"$ANDROID_HOME\"",
+    "export PATH=\"$ANDROID_HOME/emulator:$ANDROID_HOME/platform-tools:$ANDROID_HOME/cmdline-tools/latest/bin:$PATH\"",
+    "export FLUTTER_HOME=\"$FLUTTER_DIR\"",
+    "export PATH=\"$FLUTTER_HOME/bin:$PATH\"",
+    "eval \"$(direnv hook bash)\"",
+    "$MARKER_END",
+    "EOF",
+    "fi"
+  ]
+};
+
+const renderModuleSteps = (moduleId, context) => {
+  if (dynamicModuleSteps[moduleId]) return dynamicModuleSteps[moduleId](context);
+  return moduleSteps[moduleId] || [];
+};
+
 const generateScript = (config = {}) => {
   const selected = new Set(config.selected || []);
   const services = Boolean(config.startServices);
@@ -125,21 +178,7 @@ const generateScript = (config = {}) => {
 
   const blocks = [];
   const wants = (...ids) => ids.some((id) => selected.has(id));
-  const needsSudo = wants(
-    "base",
-    "brew",
-    "brew-packages",
-    "desktop-apps",
-    "chrome",
-    "vscode",
-    "github-cli",
-    "onepassword",
-    "cloud-cli",
-    "codex-desktop",
-    "docker",
-    "azure",
-    "mkcert"
-  );
+  const needsSudo = [...selected].some((moduleId) => sudoModules.includes(moduleId));
 
   if (needsSudo) {
     blocks.push(section("Checking sudo access", [
@@ -159,151 +198,11 @@ const generateScript = (config = {}) => {
     ]));
   }
 
-  if (wants("base")) {
-    blocks.push(section("Installing Linux base tools", [
-      "install_base_tools"
-    ]));
-  }
-
-  if (wants("brew", "brew-packages")) {
-    blocks.push(section("Installing Homebrew for Linux", [
-      "ensure_homebrew",
-      "brew update"
-    ]));
-  }
-
-  if (wants("brew-packages")) {
-    blocks.push(section("Installing Brew runtimes and services", [
-      "brew_install composer gcc mysql node openjdk@17 php postgresql watchman",
-      "npm install -g corepack npm-check-updates",
-      "corepack enable || true"
-    ]));
-  }
-
-  if (wants("desktop-apps")) {
-    blocks.push(section("Installing desktop apps", [
-      "install_desktop_apps"
-    ]));
-  }
-
-  if (wants("chrome")) {
-    blocks.push(section("Installing Google Chrome", [
-      "install_chrome"
-    ]));
-  }
-
-  if (wants("vscode")) {
-    blocks.push(section("Installing Visual Studio Code", [
-      "install_vscode"
-    ]));
-  }
-
-  if (wants("cloud-cli")) {
-    blocks.push(section("Installing cloud CLIs", [
-      "install_cloud_clis"
-    ]));
-  }
-
-  if (wants("github-cli")) {
-    blocks.push(section("Installing GitHub CLI", [
-      "install_github_cli"
-    ]));
-  }
-
-  if (wants("onepassword")) {
-    blocks.push(section("Installing 1Password CLI", [
-      "install_onepassword_cli"
-    ]));
-  }
-
-  if (wants("flutter")) {
-    blocks.push(section("Installing Flutter", [
-      `FLUTTER_DIR=${q(flutterDir)}`,
-      "mkdir -p \"$(dirname \"$FLUTTER_DIR\")\"",
-      "if [[ -d \"$FLUTTER_DIR/.git\" ]]; then git -C \"$FLUTTER_DIR\" fetch --depth=1 origin stable && git -C \"$FLUTTER_DIR\" checkout stable && git -C \"$FLUTTER_DIR\" pull --ff-only; else git clone --depth=1 --branch stable https://github.com/flutter/flutter.git \"$FLUTTER_DIR\"; fi"
-    ]));
-  }
-
-  if (wants("codex-cli")) {
-    blocks.push(section("Installing Codex CLI", [
-      "if ! have codex; then curl -fsSL https://chatgpt.com/codex/install.sh | CODEX_NON_INTERACTIVE=1 sh; fi"
-    ]));
-  }
-
-  if (wants("codex-desktop")) {
-    blocks.push(section("Installing Codex Desktop Linux wrapper", [
-      `CODEX_DESKTOP_REPO_DIR=${q(codexRepo)}`,
-      `CODEX_DESKTOP_INSTALL_MODE=${q(codexMode)}`,
-      "if [[ ! -d \"$CODEX_DESKTOP_REPO_DIR/.git\" ]]; then git clone https://github.com/ilysenko/codex-desktop-linux.git \"$CODEX_DESKTOP_REPO_DIR\"; fi",
-      "case \"$CODEX_DESKTOP_INSTALL_MODE\" in",
-      "  auto)",
-      "    deb=\"$(latest_file \"$CODEX_DESKTOP_REPO_DIR/dist/codex-desktop_*.deb\" || true)\"",
-      "    if have codex-desktop; then echo \"codex-desktop already installed\"; elif [[ -n \"$deb\" && \"$DISTRO_ID\" =~ ^(ubuntu|debian)$ ]]; then apt_install \"$deb\"; else make -C \"$CODEX_DESKTOP_REPO_DIR\" install-user-app; fi",
-      "    ;;",
-      "  deb) [[ \"$DISTRO_ID\" =~ ^(ubuntu|debian)$ ]] || { echo '.deb mode only works on Debian/Ubuntu profiles.' >&2; exit 1; }; deb=\"$(latest_file \"$CODEX_DESKTOP_REPO_DIR/dist/codex-desktop_*.deb\" || true)\"; [[ -n \"$deb\" ]] || { echo \"No local .deb found\" >&2; exit 1; }; apt_install \"$deb\" ;;",
-      "  user) make -C \"$CODEX_DESKTOP_REPO_DIR\" install-user-app ;;",
-      "  native) make -C \"$CODEX_DESKTOP_REPO_DIR\" bootstrap-native ;;",
-      "esac"
-    ]));
-  }
-
-  if (wants("docker")) {
-    blocks.push(section("Installing Docker Engine", [
-      "install_docker"
-    ]));
-  }
-
-  if (wants("kubernetes")) {
-    blocks.push(section("Installing Kubernetes tools", [
-      "brew_install kubectl helm"
-    ]));
-  }
-
-  if (wants("terraform")) {
-    blocks.push(section("Installing Terraform", [
-      "brew_install terraform"
-    ]));
-  }
-
-  if (wants("azure")) {
-    blocks.push(section("Installing Azure CLI", [
-      "install_azure_cli"
-    ]));
-  }
-
-  if (wants("mkcert")) {
-    blocks.push(section("Installing mkcert", [
-      "brew_install mkcert nss",
-      "mkcert -install"
-    ]));
-  }
-
-  if (wants("shell-setup")) {
-    blocks.push(section("Writing shell environment block", [
-      `ANDROID_HOME_DIR=${q(androidHome)}`,
-      `FLUTTER_DIR=${q(flutterDir)}`,
-      "MARKER_START='# >>> dev-workstation bootstrap >>>'",
-      "MARKER_END='# <<< dev-workstation bootstrap <<<'",
-      "if ! grep -Fq \"$MARKER_START\" \"$HOME/.bashrc\"; then",
-      "cat >>\"$HOME/.bashrc\" <<EOF",
-      "",
-      "$MARKER_START",
-      "if command -v brew >/dev/null 2>&1; then",
-      "  export HOMEBREW_PREFIX=\"$(brew --prefix)\"",
-      "  export PATH=\"$HOMEBREW_PREFIX/bin:$HOMEBREW_PREFIX/sbin:$HOME/.local/bin:$PATH\"",
-      "  export JAVA_HOME=\"$(brew --prefix openjdk@17)/libexec/openjdk.jdk/Contents/Home\"",
-      "  export PATH=\"$JAVA_HOME/bin:$PATH\"",
-      "fi",
-      "export ANDROID_HOME=\"$ANDROID_HOME_DIR\"",
-      "export ANDROID_SDK_ROOT=\"$ANDROID_HOME\"",
-      "export PATH=\"$ANDROID_HOME/emulator:$ANDROID_HOME/platform-tools:$ANDROID_HOME/cmdline-tools/latest/bin:$PATH\"",
-      "export FLUTTER_HOME=\"$FLUTTER_DIR\"",
-      "export PATH=\"$FLUTTER_HOME/bin:$PATH\"",
-      "eval \"$(direnv hook bash)\"",
-      "$MARKER_END",
-      "EOF",
-      "fi"
-    ]));
+  const context = { androidHome, codexMode, codexRepo, flutterDir };
+  for (const module of installModules) {
+    if (!wants(module.id)) continue;
+    const steps = renderModuleSteps(module.id, context);
+    if (steps.length) blocks.push(section(module.scriptTitle || module.title, steps));
   }
 
   if (gitName || gitEmail) {
@@ -674,6 +573,9 @@ const serveStatic = async (req, res) => {
 const server = createServer(async (req, res) => {
   try {
     const url = new URL(req.url, `http://${req.headers.host}`);
+    if (url.pathname === "/api/manifest" && req.method === "GET") {
+      return json(res, 200, { distroProfiles, modules: installModules, vmTestSuites });
+    }
     if (url.pathname === "/api/status" && req.method === "GET") {
       return json(res, 200, await getStatus());
     }

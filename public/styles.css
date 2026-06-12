@@ -366,6 +366,21 @@ select {
   line-height: 1.45;
 }
 
+.check-list {
+  margin: 0;
+  padding-left: 18px;
+  color: var(--muted);
+  line-height: 1.45;
+}
+
+.check-list li + li {
+  margin-top: 7px;
+}
+
+.test-card {
+  min-height: 260px;
+}
+
 .module-tags {
   display: flex;
   flex-wrap: wrap;
@@ -438,7 +453,7 @@ pre {
   }
 
   .steps {
-    grid-template-columns: repeat(5, minmax(0, 1fr));
+    grid-template-columns: repeat(6, minmax(0, 1fr));
   }
 
   .step {
