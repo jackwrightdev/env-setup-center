@@ -128,6 +128,7 @@ const modules = [
 ];
 
 const authActions = [
+  ["sudo", "Sudo", "Unlock sudo for inline installer runs"],
   ["github", "GitHub", "Run gh auth login"],
   ["gcloud", "Google Cloud", "Run gcloud init"],
   ["aws", "AWS", "Run aws configure"],

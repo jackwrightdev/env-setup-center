@@ -46,8 +46,8 @@ npm run dist:deb
 
 Current artifacts:
 
-- `dist/Environment Setup Center-0.1.2-x86_64.AppImage`
-- `dist/Environment Setup Center-0.1.2-amd64.deb`
+- `dist/Environment Setup Center-0.1.3-x86_64.AppImage`
+- `dist/Environment Setup Center-0.1.3-amd64.deb`
 
 When using the public GitHub repo, download packaged binaries from the Releases page rather than from git history.
 
@@ -66,5 +66,5 @@ To install the AppImage into `~/.local/opt`, add a launcher in `~/.local/bin`, a
 Install the Debian package directly:
 
 ```bash
-sudo apt install ./dist/Environment\ Setup\ Center-0.1.2-amd64.deb
+sudo apt install ./dist/Environment\ Setup\ Center-0.1.3-amd64.deb
 ```

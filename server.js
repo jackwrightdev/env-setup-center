@@ -150,6 +150,11 @@ const generateScript = (config = {}) => {
       "    echo 'Use the Run tab -> Open generated script in terminal, then rerun this selection.' >&2",
       "    exit 2",
       "  fi",
+      "fi",
+      "if sudo -n true 2>/dev/null; then",
+      "  while true; do sudo -n true 2>/dev/null || exit; sleep 60; done &",
+      "  SUDO_KEEPALIVE_PID=$!",
+      "  trap 'kill \"$SUDO_KEEPALIVE_PID\" 2>/dev/null || true' EXIT",
       "fi"
     ]));
   }
@@ -496,6 +501,7 @@ const server = createServer(async (req, res) => {
     if (url.pathname === "/api/auth" && req.method === "POST") {
       const body = await readBody(req);
       const commands = {
+        sudo: "sudo -v && echo 'Sudo unlocked for this login session.'",
         github: "gh auth login",
         gcloud: "gcloud init",
         aws: "aws configure",

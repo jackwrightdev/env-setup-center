@@ -1,6 +1,6 @@
 {
   "name": "env-setup-center",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "private": true,
   "description": "Local GUI for selecting and installing a Ubuntu developer workstation setup.",
   "homepage": "https://local.env-setup-center.invalid",
