@@ -1,0 +1,56 @@
+{
+  "name": "env-setup-center",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Local GUI for selecting and installing a Ubuntu developer workstation setup.",
+  "homepage": "https://local.env-setup-center.invalid",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jackwrightdev/env-setup-center.git"
+  },
+  "author": {
+    "name": "Local Workstation Setup",
+    "email": "local@example.invalid"
+  },
+  "type": "module",
+  "main": "main.js",
+  "scripts": {
+    "start": "node server.js",
+    "electron": "electron .",
+    "pack": "electron-builder --dir",
+    "dist:appimage": "electron-builder --linux AppImage",
+    "dist:deb": "electron-builder --linux deb"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "devDependencies": {
+    "electron": "^39.2.7",
+    "electron-builder": "^26.0.12"
+  },
+  "allowScripts": {
+    "electron": true,
+    "electron-winstaller": true
+  },
+  "build": {
+    "appId": "dev.local.env-setup-center",
+    "productName": "Environment Setup Center",
+    "artifactName": "${productName}-${version}-${arch}.${ext}",
+    "asar": true,
+    "files": [
+      "main.js",
+      "server.js",
+      "package.json",
+      "public/**/*",
+      "assets/**/*"
+    ],
+    "linux": {
+      "category": "Development",
+      "maintainer": "Local Workstation Setup <local@example.invalid>",
+      "target": [
+        "AppImage"
+      ],
+      "icon": "assets/icon.png"
+    }
+  }
+}

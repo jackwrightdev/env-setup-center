@@ -1,0 +1,165 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Environment Setup Center</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <aside class="sidebar">
+        <div class="brand">
+          <div class="brand-mark">OS</div>
+          <div>
+            <h1>Setup Center</h1>
+            <p id="os-label">Detecting machine...</p>
+          </div>
+        </div>
+        <nav class="steps" aria-label="Setup sections">
+          <button class="step active" data-view="overview">Overview</button>
+          <button class="step" data-view="installer">Installer</button>
+          <button class="step" data-view="credentials">Credentials</button>
+          <button class="step" data-view="script">Script</button>
+          <button class="step" data-view="run">Run</button>
+        </nav>
+        <div class="sidebar-footer">
+          <span class="dot"></span>
+          <span>Local only, no secrets stored</span>
+        </div>
+      </aside>
+
+      <main>
+        <section class="topbar">
+          <div>
+            <p class="eyebrow">Ubuntu workstation bootstrap</p>
+            <h2 id="view-title">Overview</h2>
+          </div>
+          <div class="top-actions">
+            <button class="icon-button" id="refresh-status" title="Refresh status">Refresh</button>
+            <button class="primary-button" id="save-script">Save script</button>
+          </div>
+        </section>
+
+        <section class="view active" id="overview">
+          <div class="metrics" id="metrics"></div>
+          <div class="two-column">
+            <section class="panel">
+              <div class="panel-head">
+                <h3>Installed Status</h3>
+                <span id="status-summary">Scanning...</span>
+              </div>
+              <div class="status-grid" id="status-grid"></div>
+            </section>
+            <section class="panel">
+              <div class="panel-head">
+                <h3>Setup Shape</h3>
+                <span id="selection-count">0 selected</span>
+              </div>
+              <div class="setup-shape">
+                <label>
+                  Flutter path
+                  <input id="flutter-dir" value="$HOME/develop/flutter" />
+                </label>
+                <label>
+                  Android SDK path
+                  <input id="android-home" value="$HOME/Android/Sdk" />
+                </label>
+                <label>
+                  Codex Desktop repo
+                  <input id="codex-repo" value="$HOME/codex-desktop-linux" />
+                </label>
+                <label>
+                  Codex Desktop install mode
+                  <select id="codex-mode">
+                    <option value="auto">Auto: local .deb, then user install</option>
+                    <option value="deb">Existing local .deb only</option>
+                    <option value="user">User-local app install</option>
+                    <option value="native">Native rebuild and package</option>
+                  </select>
+                </label>
+              </div>
+            </section>
+          </div>
+        </section>
+
+        <section class="view" id="installer">
+          <div class="toolbar">
+            <button id="select-recommended">Select recommended</button>
+            <button id="select-all">Select all</button>
+            <button id="clear-all">Clear all</button>
+            <label class="toggle-line">
+              <input type="checkbox" id="start-services" />
+              Start MySQL/PostgreSQL after install
+            </label>
+          </div>
+          <div class="module-grid" id="module-grid"></div>
+        </section>
+
+        <section class="view" id="credentials">
+          <div class="two-column">
+            <section class="panel">
+              <div class="panel-head">
+                <h3>Git Identity</h3>
+                <span>Written with git config</span>
+              </div>
+              <div class="setup-shape">
+                <label>
+                  Name
+                  <input id="git-name" placeholder="Jane Developer" autocomplete="name" />
+                </label>
+                <label>
+                  Email
+                  <input id="git-email" placeholder="jane@example.com" autocomplete="email" />
+                </label>
+              </div>
+            </section>
+            <section class="panel">
+              <div class="panel-head">
+                <h3>Sign-ins</h3>
+                <span>Opened in terminal</span>
+              </div>
+              <div class="auth-list" id="auth-list"></div>
+            </section>
+          </div>
+        </section>
+
+        <section class="view" id="script">
+          <div class="panel script-panel">
+            <div class="panel-head">
+              <h3>Generated Script</h3>
+              <span id="script-path">Not saved yet</span>
+            </div>
+            <pre id="script-preview"></pre>
+          </div>
+        </section>
+
+        <section class="view" id="run">
+          <div class="run-layout">
+            <section class="panel">
+              <div class="panel-head">
+                <h3>Run Setup</h3>
+                <span>Use terminal for sudo prompts</span>
+              </div>
+              <div class="run-actions">
+                <button class="primary-button" id="open-terminal">Open generated script in terminal</button>
+                <button id="run-inline">Run inline and stream logs</button>
+              </div>
+              <p class="muted">Inline runs are useful for non-interactive sections. Terminal mode is better for first-time setup because sudo and login flows can prompt cleanly.</p>
+            </section>
+            <section class="panel log-panel">
+              <div class="panel-head">
+                <h3>Logs</h3>
+                <span id="run-state">Idle</span>
+              </div>
+              <pre id="log-output"></pre>
+            </section>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <div class="toast" id="toast" role="status" aria-live="polite"></div>
+    <script src="/app.js" type="module"></script>
+  </body>
+</html>
