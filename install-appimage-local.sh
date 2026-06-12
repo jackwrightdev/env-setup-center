@@ -2,7 +2,7 @@
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "$0")" && pwd)"
-APPIMAGE_SOURCE="$ROOT_DIR/dist/Environment Setup Center-0.1.4-x86_64.AppImage"
+APPIMAGE_SOURCE="$ROOT_DIR/dist/Environment Setup Center-0.2.0-x86_64.AppImage"
 INSTALL_DIR="$HOME/.local/opt/env-setup-center"
 BIN_DIR="$HOME/.local/bin"
 DESKTOP_DIR="$HOME/.local/share/applications"

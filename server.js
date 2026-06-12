@@ -115,6 +115,7 @@ const section = (title, lines) => [
 const generateScript = (config = {}) => {
   const selected = new Set(config.selected || []);
   const services = Boolean(config.startServices);
+  const targetDistro = config.distroProfile || "auto";
   const codexMode = config.codexDesktopMode || "auto";
   const codexRepo = config.codexDesktopRepo || "$HOME/codex-desktop-linux";
   const flutterDir = config.flutterDir || "$HOME/develop/flutter";
@@ -159,28 +160,21 @@ const generateScript = (config = {}) => {
   }
 
   if (wants("base")) {
-    blocks.push(section("Installing base Ubuntu tools", [
-      "sudo apt-get update",
-      "apt_install apt-transport-https android-tools-adb android-tools-fastboot build-essential ca-certificates clang cmake curl direnv file flatpak g++ gcc git gnupg jq libfuse2t64 libgtk-3-dev liblzma-dev lsb-release make ninja-build openssh-client pkg-config procps python3 python3-pip python3-venv pipx remmina rsync snapd unzip wget xz-utils zip",
-      "sudo flatpak remote-add --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo",
-      "python3 -m pipx ensurepath || true"
+    blocks.push(section("Installing Linux base tools", [
+      "install_base_tools"
     ]));
   }
 
   if (wants("brew", "brew-packages")) {
     blocks.push(section("Installing Homebrew for Linux", [
-      "if ! have brew; then",
-      "  sudo -v",
-      "  NONINTERACTIVE=1 /bin/bash -c \"$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)\"",
-      "fi",
-      "eval \"$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)\"",
+      "ensure_homebrew",
       "brew update"
     ]));
   }
 
   if (wants("brew-packages")) {
     blocks.push(section("Installing Brew runtimes and services", [
-      "brew install composer gcc mysql node openjdk@17 php postgresql watchman",
+      "brew_install composer gcc mysql node openjdk@17 php postgresql watchman",
       "npm install -g corepack npm-check-updates",
       "corepack enable || true"
     ]));
@@ -188,68 +182,37 @@ const generateScript = (config = {}) => {
 
   if (wants("desktop-apps")) {
     blocks.push(section("Installing desktop apps", [
-      "snap_install android-studio --classic",
-      "snap_install slack --classic",
-      "snap_install postman",
-      "snap_install termius-app",
-      "apt_install remmina",
-      "flatpak_install io.dbeaver.DBeaverCommunity"
+      "install_desktop_apps"
     ]));
   }
 
   if (wants("chrome")) {
     blocks.push(section("Installing Google Chrome", [
-      "if ! have google-chrome; then",
-      "  wget -qO- https://dl.google.com/linux/linux_signing_key.pub | gpg --dearmor | sudo tee /etc/apt/keyrings/google-chrome.gpg >/dev/null",
-      "  echo 'deb [arch=amd64 signed-by=/etc/apt/keyrings/google-chrome.gpg] http://dl.google.com/linux/chrome/deb/ stable main' | sudo tee /etc/apt/sources.list.d/google-chrome.list >/dev/null",
-      "  sudo apt-get update",
-      "  apt_install google-chrome-stable",
-      "fi"
+      "install_chrome"
     ]));
   }
 
   if (wants("vscode")) {
     blocks.push(section("Installing Visual Studio Code", [
-      "if ! have code; then",
-      "  wget -qO- https://packages.microsoft.com/keys/microsoft.asc | gpg --dearmor | sudo tee /etc/apt/keyrings/packages.microsoft.gpg >/dev/null",
-      "  echo 'deb [arch=amd64,arm64,armhf signed-by=/etc/apt/keyrings/packages.microsoft.gpg] https://packages.microsoft.com/repos/code stable main' | sudo tee /etc/apt/sources.list.d/vscode.list >/dev/null",
-      "  sudo apt-get update",
-      "  apt_install code",
-      "fi"
+      "install_vscode"
     ]));
   }
 
   if (wants("cloud-cli")) {
     blocks.push(section("Installing cloud CLIs", [
-      "snap_install google-cloud-cli --classic",
-      "snap_install aws-cli --classic"
+      "install_cloud_clis"
     ]));
   }
 
   if (wants("github-cli")) {
     blocks.push(section("Installing GitHub CLI", [
-      "if ! have gh; then",
-      "  sudo mkdir -p -m 755 /etc/apt/keyrings",
-      "  wget -qO- https://cli.github.com/packages/githubcli-archive-keyring.gpg | sudo tee /etc/apt/keyrings/githubcli-archive-keyring.gpg >/dev/null",
-      "  sudo chmod go+r /etc/apt/keyrings/githubcli-archive-keyring.gpg",
-      "  echo \"deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main\" | sudo tee /etc/apt/sources.list.d/github-cli.list >/dev/null",
-      "  sudo apt-get update",
-      "  apt_install gh",
-      "fi"
+      "install_github_cli"
     ]));
   }
 
   if (wants("onepassword")) {
     blocks.push(section("Installing 1Password CLI", [
-      "if ! have op; then",
-      "  curl -sS https://downloads.1password.com/linux/keys/1password.asc | gpg --dearmor | sudo tee /usr/share/keyrings/1password-archive-keyring.gpg >/dev/null",
-      "  echo 'deb [arch=amd64 signed-by=/usr/share/keyrings/1password-archive-keyring.gpg] https://downloads.1password.com/linux/debian/amd64 stable main' | sudo tee /etc/apt/sources.list.d/1password.list >/dev/null",
-      "  sudo mkdir -p /etc/debsig/policies/AC2D62742012EA22/ /usr/share/debsig/keyrings/AC2D62742012EA22",
-      "  curl -sS https://downloads.1password.com/linux/debian/debsig/1password.pol | sudo tee /etc/debsig/policies/AC2D62742012EA22/1password.pol >/dev/null",
-      "  curl -sS https://downloads.1password.com/linux/keys/1password.asc | gpg --dearmor | sudo tee /usr/share/debsig/keyrings/AC2D62742012EA22/debsig.gpg >/dev/null",
-      "  sudo apt-get update",
-      "  apt_install 1password-cli",
-      "fi"
+      "install_onepassword_cli"
     ]));
   }
 
@@ -275,9 +238,9 @@ const generateScript = (config = {}) => {
       "case \"$CODEX_DESKTOP_INSTALL_MODE\" in",
       "  auto)",
       "    deb=\"$(latest_file \"$CODEX_DESKTOP_REPO_DIR/dist/codex-desktop_*.deb\" || true)\"",
-      "    if [[ -n \"$deb\" ]]; then sudo apt-get install -y \"$deb\"; elif have codex-desktop; then echo \"codex-desktop already installed\"; else make -C \"$CODEX_DESKTOP_REPO_DIR\" install-user-app; fi",
+      "    if have codex-desktop; then echo \"codex-desktop already installed\"; elif [[ -n \"$deb\" && \"$DISTRO_ID\" =~ ^(ubuntu|debian)$ ]]; then apt_install \"$deb\"; else make -C \"$CODEX_DESKTOP_REPO_DIR\" install-user-app; fi",
       "    ;;",
-      "  deb) deb=\"$(latest_file \"$CODEX_DESKTOP_REPO_DIR/dist/codex-desktop_*.deb\" || true)\"; [[ -n \"$deb\" ]] || { echo \"No local .deb found\" >&2; exit 1; }; sudo apt-get install -y \"$deb\" ;;",
+      "  deb) [[ \"$DISTRO_ID\" =~ ^(ubuntu|debian)$ ]] || { echo '.deb mode only works on Debian/Ubuntu profiles.' >&2; exit 1; }; deb=\"$(latest_file \"$CODEX_DESKTOP_REPO_DIR/dist/codex-desktop_*.deb\" || true)\"; [[ -n \"$deb\" ]] || { echo \"No local .deb found\" >&2; exit 1; }; apt_install \"$deb\" ;;",
       "  user) make -C \"$CODEX_DESKTOP_REPO_DIR\" install-user-app ;;",
       "  native) make -C \"$CODEX_DESKTOP_REPO_DIR\" bootstrap-native ;;",
       "esac"
@@ -286,40 +249,31 @@ const generateScript = (config = {}) => {
 
   if (wants("docker")) {
     blocks.push(section("Installing Docker Engine", [
-      "if ! have docker; then",
-      "  sudo install -m 0755 -d /etc/apt/keyrings",
-      "  curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg",
-      "  sudo chmod a+r /etc/apt/keyrings/docker.gpg",
-      "  . /etc/os-release",
-      "  echo \"deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu $VERSION_CODENAME stable\" | sudo tee /etc/apt/sources.list.d/docker.list >/dev/null",
-      "  sudo apt-get update",
-      "  apt_install docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin",
-      "  sudo usermod -aG docker \"$USER\"",
-      "fi"
+      "install_docker"
     ]));
   }
 
   if (wants("kubernetes")) {
     blocks.push(section("Installing Kubernetes tools", [
-      "brew install kubectl helm"
+      "brew_install kubectl helm"
     ]));
   }
 
   if (wants("terraform")) {
     blocks.push(section("Installing Terraform", [
-      "brew install terraform"
+      "brew_install terraform"
     ]));
   }
 
   if (wants("azure")) {
     blocks.push(section("Installing Azure CLI", [
-      "if ! have az; then curl -sL https://aka.ms/InstallAzureCLIDeb | sudo bash; fi"
+      "install_azure_cli"
     ]));
   }
 
   if (wants("mkcert")) {
     blocks.push(section("Installing mkcert", [
-      "brew install mkcert nss",
+      "brew_install mkcert nss",
       "mkcert -install"
     ]));
   }
@@ -334,9 +288,9 @@ const generateScript = (config = {}) => {
       "cat >>\"$HOME/.bashrc\" <<EOF",
       "",
       "$MARKER_START",
-      "export HOMEBREW_PREFIX=\"/home/linuxbrew/.linuxbrew\"",
-      "export PATH=\"$HOMEBREW_PREFIX/bin:$HOMEBREW_PREFIX/sbin:$HOME/.local/bin:$PATH\"",
       "if command -v brew >/dev/null 2>&1; then",
+      "  export HOMEBREW_PREFIX=\"$(brew --prefix)\"",
+      "  export PATH=\"$HOMEBREW_PREFIX/bin:$HOMEBREW_PREFIX/sbin:$HOME/.local/bin:$PATH\"",
       "  export JAVA_HOME=\"$(brew --prefix openjdk@17)/libexec/openjdk.jdk/Contents/Home\"",
       "  export PATH=\"$JAVA_HOME/bin:$PATH\"",
       "fi",
@@ -379,18 +333,282 @@ const generateScript = (config = {}) => {
 
   return `#!/usr/bin/env bash
 set -euo pipefail
+TARGET_DISTRO=${q(targetDistro)}
 
 log() { printf '\\n\\033[1;36m==>\\033[0m %s\\n' "$*"; }
+warn() { printf '\\n\\033[1;33mWARN:\\033[0m %s\\n' "$*" >&2; }
 have() { command -v "$1" >/dev/null 2>&1; }
-apt_install() { sudo apt-get install -y "$@"; }
-snap_install() {
-  local name="$1"
-  shift
-  if snap list "$name" >/dev/null 2>&1; then echo "snap package already installed: $name"; else sudo snap install "$name" "$@"; fi
+
+detect_distro() {
+  local id="" like="" requested="$TARGET_DISTRO"
+  if [[ -r /etc/os-release ]]; then
+    # shellcheck disable=SC1091
+    . /etc/os-release
+    id="\${ID:-}"
+    like="\${ID_LIKE:-}"
+  fi
+  if [[ -n "$requested" && "$requested" != "auto" ]]; then
+    printf '%s\\n' "$requested"
+    return
+  fi
+  case " $id $like " in
+    *manjaro*) printf 'manjaro\\n' ;;
+    *arch*) printf 'arch\\n' ;;
+    *fedora*) printf 'fedora\\n' ;;
+    *ubuntu*|*debian*) printf 'ubuntu\\n' ;;
+    *) printf '%s\\n' "\${id:-unknown}" ;;
+  esac
 }
+
+DISTRO_ID="$(detect_distro)"
+log "Target distro profile: $DISTRO_ID"
+
+APT_UPDATED=0
+PACMAN_UPDATED=0
+
+apt_refresh() {
+  if [[ "$APT_UPDATED" -eq 0 ]]; then
+    sudo apt-get update
+    APT_UPDATED=1
+  fi
+}
+
+apt_install() {
+  apt_refresh
+  sudo apt-get install -y "$@"
+}
+
+dnf_install() {
+  sudo dnf install -y "$@"
+}
+
+pacman_refresh() {
+  if [[ "$PACMAN_UPDATED" -eq 0 ]]; then
+    sudo pacman -Syu --noconfirm
+    PACMAN_UPDATED=1
+  fi
+}
+
+pacman_install() {
+  pacman_refresh
+  sudo pacman -S --needed --noconfirm "$@"
+}
+
+ensure_flatpak() {
+  if ! have flatpak; then
+    case "$DISTRO_ID" in
+      ubuntu|debian) apt_install flatpak ;;
+      fedora) dnf_install flatpak ;;
+      arch|manjaro) pacman_install flatpak ;;
+      *) warn "No Flatpak install mapping for $DISTRO_ID" ;;
+    esac
+  fi
+  if have flatpak; then
+    sudo flatpak remote-add --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
+  fi
+}
+
 flatpak_install() {
   local ref="$1"
-  if flatpak info "$ref" >/dev/null 2>&1; then echo "flatpak already installed: $ref"; else flatpak install -y flathub "$ref"; fi
+  ensure_flatpak
+  if flatpak info "$ref" >/dev/null 2>&1; then
+    echo "flatpak already installed: $ref"
+  else
+    flatpak install -y --system flathub "$ref"
+  fi
+}
+
+flatpak_install_optional() {
+  local ref="$1"
+  flatpak_install "$ref" || warn "Could not install optional Flatpak: $ref"
+}
+
+install_base_tools() {
+  case "$DISTRO_ID" in
+    ubuntu|debian)
+      apt_install apt-transport-https android-tools-adb android-tools-fastboot build-essential ca-certificates clang cmake curl direnv file flatpak g++ gcc git gnupg jq libfuse2t64 libgtk-3-dev liblzma-dev lsb-release make ninja-build openssh-client pkg-config procps python3 python3-pip python3-venv pipx remmina rsync snapd unzip wget xz-utils zip
+      ;;
+    fedora)
+      sudo dnf groupinstall -y "Development Tools" || true
+      dnf_install android-tools ca-certificates clang cmake curl direnv file flatpak gcc gcc-c++ git gnupg2 jq fuse gtk3-devel xz-devel redhat-lsb-core make ninja-build openssh-clients pkgconf-pkg-config procps-ng python3 python3-pip pipx remmina rsync unzip wget xz zip which
+      ;;
+    arch|manjaro)
+      pacman_install base-devel android-tools ca-certificates clang cmake curl direnv file flatpak gcc git gnupg jq fuse2 gtk3 xz lsb-release make ninja openssh pkgconf procps-ng python python-pip python-pipx remmina rsync unzip wget zip which
+      ;;
+    *)
+      echo "Unsupported distro profile for base tools: $DISTRO_ID" >&2
+      exit 1
+      ;;
+  esac
+  ensure_flatpak
+  if have python3; then python3 -m pipx ensurepath || true; elif have python; then python -m pipx ensurepath || true; fi
+}
+
+ensure_homebrew() {
+  if [[ -x /home/linuxbrew/.linuxbrew/bin/brew ]]; then
+    eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
+  elif [[ -x "$HOME/.linuxbrew/bin/brew" ]]; then
+    eval "$("$HOME/.linuxbrew/bin/brew" shellenv)"
+  elif have brew; then
+    eval "$(brew shellenv)"
+  else
+    sudo -v
+    NONINTERACTIVE=1 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+    if [[ -x /home/linuxbrew/.linuxbrew/bin/brew ]]; then
+      eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
+    elif [[ -x "$HOME/.linuxbrew/bin/brew" ]]; then
+      eval "$("$HOME/.linuxbrew/bin/brew" shellenv)"
+    fi
+  fi
+}
+
+brew_install() {
+  ensure_homebrew
+  brew install "$@"
+}
+
+install_desktop_apps() {
+  ensure_flatpak
+  flatpak_install com.google.AndroidStudio
+  flatpak_install com.slack.Slack
+  flatpak_install com.getpostman.Postman
+  flatpak_install_optional com.termius.Termius
+  flatpak_install org.remmina.Remmina
+  flatpak_install io.dbeaver.DBeaverCommunity
+}
+
+install_chrome() {
+  if have google-chrome || have google-chrome-stable; then
+    echo "Google Chrome already installed"
+    return
+  fi
+  case "$DISTRO_ID" in
+    ubuntu|debian)
+      wget -qO- https://dl.google.com/linux/linux_signing_key.pub | gpg --dearmor | sudo tee /etc/apt/keyrings/google-chrome.gpg >/dev/null
+      echo 'deb [arch=amd64 signed-by=/etc/apt/keyrings/google-chrome.gpg] http://dl.google.com/linux/chrome/deb/ stable main' | sudo tee /etc/apt/sources.list.d/google-chrome.list >/dev/null
+      APT_UPDATED=0
+      apt_install google-chrome-stable
+      ;;
+    fedora)
+      sudo tee /etc/yum.repos.d/google-chrome.repo >/dev/null <<'EOF'
+[google-chrome]
+name=google-chrome
+baseurl=https://dl.google.com/linux/chrome/rpm/stable/x86_64
+enabled=1
+gpgcheck=1
+gpgkey=https://dl.google.com/linux/linux_signing_key.pub
+EOF
+      dnf_install google-chrome-stable
+      ;;
+    arch|manjaro)
+      if have yay; then
+        yay -S --needed --noconfirm google-chrome
+      elif have pamac; then
+        pamac build --no-confirm google-chrome
+      else
+        warn "No AUR helper found for Google Chrome; installing Chromium instead."
+        pacman_install chromium
+      fi
+      ;;
+  esac
+}
+
+install_vscode() {
+  if have code; then
+    echo "VS Code already installed"
+    return
+  fi
+  case "$DISTRO_ID" in
+    ubuntu|debian)
+      wget -qO- https://packages.microsoft.com/keys/microsoft.asc | gpg --dearmor | sudo tee /etc/apt/keyrings/packages.microsoft.gpg >/dev/null
+      echo 'deb [arch=amd64,arm64,armhf signed-by=/etc/apt/keyrings/packages.microsoft.gpg] https://packages.microsoft.com/repos/code stable main' | sudo tee /etc/apt/sources.list.d/vscode.list >/dev/null
+      APT_UPDATED=0
+      apt_install code
+      ;;
+    fedora)
+      sudo rpm --import https://packages.microsoft.com/keys/microsoft.asc
+      sudo tee /etc/yum.repos.d/vscode.repo >/dev/null <<'EOF'
+[code]
+name=Visual Studio Code
+baseurl=https://packages.microsoft.com/yumrepos/vscode
+enabled=1
+gpgcheck=1
+gpgkey=https://packages.microsoft.com/keys/microsoft.asc
+EOF
+      dnf_install code
+      ;;
+    arch|manjaro)
+      if have yay; then yay -S --needed --noconfirm visual-studio-code-bin || pacman_install code; else pacman_install code; fi
+      ;;
+  esac
+}
+
+install_github_cli() {
+  if have gh; then echo "GitHub CLI already installed"; else brew_install gh; fi
+}
+
+install_cloud_clis() {
+  brew_install google-cloud-sdk awscli
+}
+
+install_onepassword_cli() {
+  if have op; then
+    echo "1Password CLI already installed"
+    return
+  fi
+  case "$DISTRO_ID" in
+    ubuntu|debian)
+      curl -sS https://downloads.1password.com/linux/keys/1password.asc | gpg --dearmor | sudo tee /usr/share/keyrings/1password-archive-keyring.gpg >/dev/null
+      echo 'deb [arch=amd64 signed-by=/usr/share/keyrings/1password-archive-keyring.gpg] https://downloads.1password.com/linux/debian/amd64 stable main' | sudo tee /etc/apt/sources.list.d/1password.list >/dev/null
+      sudo mkdir -p /etc/debsig/policies/AC2D62742012EA22/ /usr/share/debsig/keyrings/AC2D62742012EA22
+      curl -sS https://downloads.1password.com/linux/debian/debsig/1password.pol | sudo tee /etc/debsig/policies/AC2D62742012EA22/1password.pol >/dev/null
+      curl -sS https://downloads.1password.com/linux/keys/1password.asc | gpg --dearmor | sudo tee /usr/share/debsig/keyrings/AC2D62742012EA22/debsig.gpg >/dev/null
+      APT_UPDATED=0
+      apt_install 1password-cli
+      ;;
+    *)
+      brew_install 1password-cli || warn "1Password CLI is not available through this profile. Install it manually if needed."
+      ;;
+  esac
+}
+
+install_docker() {
+  if have docker; then
+    echo "Docker already installed"
+    return
+  fi
+  case "$DISTRO_ID" in
+    ubuntu|debian)
+      sudo install -m 0755 -d /etc/apt/keyrings
+      curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+      sudo chmod a+r /etc/apt/keyrings/docker.gpg
+      # shellcheck disable=SC1091
+      . /etc/os-release
+      echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu $VERSION_CODENAME stable" | sudo tee /etc/apt/sources.list.d/docker.list >/dev/null
+      APT_UPDATED=0
+      apt_install docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+      ;;
+    fedora)
+      dnf_install dnf-plugins-core
+      sudo dnf config-manager addrepo --from-repofile=https://download.docker.com/linux/fedora/docker-ce.repo
+      dnf_install docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+      ;;
+    arch|manjaro)
+      pacman_install docker docker-compose
+      ;;
+  esac
+  sudo systemctl enable --now docker || true
+  sudo usermod -aG docker "$USER" || true
+}
+
+install_azure_cli() {
+  if have az; then
+    echo "Azure CLI already installed"
+  elif [[ "$DISTRO_ID" =~ ^(ubuntu|debian)$ ]]; then
+    curl -sL https://aka.ms/InstallAzureCLIDeb | sudo bash
+  else
+    brew_install azure-cli
+  fi
 }
 latest_file() {
   local pattern="$1" matches

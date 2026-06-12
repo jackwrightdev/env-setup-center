@@ -32,7 +32,7 @@
       <main>
         <section class="topbar">
           <div>
-            <p class="eyebrow">Ubuntu workstation bootstrap</p>
+            <p class="eyebrow">Linux workstation bootstrap</p>
             <h2 id="view-title">Overview</h2>
           </div>
           <div class="top-actions">
@@ -57,6 +57,16 @@
                 <span id="selection-count">0 selected</span>
               </div>
               <div class="setup-shape">
+                <label>
+                  Linux distro profile
+                  <select id="distro-profile">
+                    <option value="auto">Auto-detect from /etc/os-release</option>
+                    <option value="ubuntu">Ubuntu / Debian family</option>
+                    <option value="fedora">Fedora</option>
+                    <option value="arch">Arch Linux</option>
+                    <option value="manjaro">Manjaro</option>
+                  </select>
+                </label>
                 <label>
                   Flutter path
                   <input id="flutter-dir" value="$HOME/develop/flutter" />

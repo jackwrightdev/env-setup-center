@@ -1,9 +1,9 @@
 const modules = [
   {
     id: "base",
-    title: "Ubuntu Base",
-    description: "Core packages, build tools, Python, ADB/Fastboot, Flatpak, Snap, SSH, rsync, jq, and Flutter Linux desktop dependencies.",
-    tags: ["apt", "build", "python"],
+    title: "Linux Base",
+    description: "Core packages, build tools, Python, ADB/Fastboot, Flatpak, SSH, rsync, jq, FUSE, and Flutter Linux desktop dependencies.",
+    tags: ["apt", "dnf", "pacman"],
     recommended: true
   },
   {
@@ -30,42 +30,42 @@ const modules = [
   {
     id: "desktop-apps",
     title: "Desktop Apps",
-    description: "Android Studio, Slack, Postman, Termius, Remmina, and DBeaver.",
-    tags: ["snap", "flatpak"],
+    description: "Android Studio, Slack, Postman, Termius, Remmina, and DBeaver using Flatpak where possible.",
+    tags: ["flatpak"],
     recommended: true
   },
   {
     id: "chrome",
     title: "Google Chrome",
-    description: "Adds Google's apt repository and installs Chrome Stable.",
-    tags: ["browser"],
+    description: "Installs Chrome through native repositories where available, with Chromium fallback on Arch-style systems.",
+    tags: ["browser", "native"],
     recommended: true
   },
   {
     id: "vscode",
     title: "VS Code",
-    description: "Adds Microsoft's apt repository and installs Visual Studio Code.",
-    tags: ["editor"],
+    description: "Installs VS Code through Microsoft repositories or Arch/Manjaro package tooling.",
+    tags: ["editor", "native"],
     recommended: true
   },
   {
     id: "github-cli",
     title: "GitHub CLI",
-    description: "Adds the official GitHub CLI apt repository and installs gh.",
-    tags: ["auth", "git"],
+    description: "Installs gh through Homebrew for a consistent cross-distro path.",
+    tags: ["auth", "git", "brew"],
     recommended: true
   },
   {
     id: "cloud-cli",
     title: "Cloud CLIs",
-    description: "Installs Google Cloud CLI and AWS CLI via Snap.",
-    tags: ["gcloud", "aws"],
+    description: "Installs Google Cloud CLI and AWS CLI through Homebrew.",
+    tags: ["gcloud", "aws", "brew"],
     recommended: true
   },
   {
     id: "onepassword",
     title: "1Password CLI",
-    description: "Adds 1Password's apt repository and installs the op CLI.",
+    description: "Installs op through the Debian repository on Ubuntu/Debian, with Homebrew fallback elsewhere.",
     tags: ["secrets"],
     recommended: true
   },
@@ -165,6 +165,7 @@ const api = async (path, options = {}) => {
 const config = () => ({
   selected: Array.from(state.selected),
   startServices: $("#start-services").checked,
+  distroProfile: $("#distro-profile").value,
   flutterDir: $("#flutter-dir").value.trim(),
   androidHome: $("#android-home").value.trim(),
   codexDesktopRepo: $("#codex-repo").value.trim(),
@@ -271,7 +272,7 @@ const renderStatus = (status) => {
     <div class="metric"><strong>${installed}</strong><span>Tools detected</span></div>
     <div class="metric"><strong>${state.selected.size}</strong><span>Modules selected</span></div>
     <div class="metric"><strong>${status.home ? "Yes" : "No"}</strong><span>Local session</span></div>
-    <div class="metric"><strong>${$("#codex-mode").value}</strong><span>Desktop mode</span></div>
+    <div class="metric"><strong>${$("#distro-profile").value}</strong><span>Distro profile</span></div>
   `;
   $("#status-grid").innerHTML = statusKeys
     .map(([key, label]) => {
@@ -367,7 +368,7 @@ const wireActions = () => {
     updateSelectionCount();
     refreshScript();
   });
-  ["flutter-dir", "android-home", "codex-repo", "codex-mode", "git-name", "git-email", "start-services"].forEach((id) => {
+  ["distro-profile", "flutter-dir", "android-home", "codex-repo", "codex-mode", "git-name", "git-email", "start-services"].forEach((id) => {
     $(`#${id}`).addEventListener("input", refreshScript);
     $(`#${id}`).addEventListener("change", refreshScript);
   });
