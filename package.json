@@ -1,6 +1,6 @@
 {
   "name": "env-setup-center",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "private": true,
   "description": "Local GUI for selecting and installing a Linux developer workstation setup.",
   "homepage": "https://local.env-setup-center.invalid",
@@ -41,6 +41,7 @@
       "main.js",
       "server.js",
       "package.json",
+      "manifests/**/*",
       "public/**/*",
       "assets/**/*"
     ],

@@ -91,9 +91,13 @@ const getStatus = async () => {
       };
     })
   );
+  const androidStudioSnap = await shellOutput("snap list android-studio 2>/dev/null | tail -n +2");
+  const androidStudioFlatpak = await shellOutput("flatpak info com.google.AndroidStudio 2>/dev/null | head -n 1");
   checks.androidStudio = {
-    installed: (await shellOutput("snap list android-studio 2>/dev/null | tail -n +2")).length > 0,
-    version: await shellOutput("snap list android-studio 2>/dev/null | awk 'NR==2 {print $2}'")
+    installed: androidStudioSnap.length > 0 || androidStudioFlatpak.length > 0,
+    version:
+      (await shellOutput("flatpak info com.google.AndroidStudio 2>/dev/null | awk -F': ' '/Version/ {print $2; exit}'")) ||
+      (await shellOutput("snap list android-studio 2>/dev/null | awk 'NR==2 {print $2}'"))
   };
   checks.dbeaver = {
     installed: (await shellOutput("flatpak info io.dbeaver.DBeaverCommunity 2>/dev/null | head -n 1")).length > 0,
@@ -239,18 +243,21 @@ warn() { printf '\\n\\033[1;33mWARN:\\033[0m %s\\n' "$*" >&2; }
 have() { command -v "$1" >/dev/null 2>&1; }
 
 detect_distro() {
-  local id="" like="" requested="$TARGET_DISTRO"
+  local id="" like="" name="" pretty="" requested="$TARGET_DISTRO"
   if [[ -r /etc/os-release ]]; then
     # shellcheck disable=SC1091
     . /etc/os-release
     id="\${ID:-}"
     like="\${ID_LIKE:-}"
+    name="\${NAME:-}"
+    pretty="\${PRETTY_NAME:-}"
   fi
   if [[ -n "$requested" && "$requested" != "auto" ]]; then
     printf '%s\\n' "$requested"
     return
   fi
-  case " $id $like " in
+  case " $id $like $name $pretty " in
+    *bazzite*) printf 'bazzite\\n' ;;
     *manjaro*) printf 'manjaro\\n' ;;
     *arch*) printf 'arch\\n' ;;
     *fedora*) printf 'fedora\\n' ;;
@@ -264,6 +271,7 @@ log "Target distro profile: $DISTRO_ID"
 
 APT_UPDATED=0
 PACMAN_UPDATED=0
+OSTREE_LAYERED=0
 
 apt_refresh() {
   if [[ "$APT_UPDATED" -eq 0 ]]; then
@@ -279,6 +287,22 @@ apt_install() {
 
 dnf_install() {
   sudo dnf install -y "$@"
+}
+
+rpm_ostree_install() {
+  have rpm-ostree || { echo "rpm-ostree is required for the Bazzite profile." >&2; exit 1; }
+  local missing=() package
+  for package in "$@"; do
+    if rpm -q "$package" >/dev/null 2>&1; then
+      echo "rpm already present: $package"
+    else
+      missing+=("$package")
+    fi
+  done
+  if [[ "\${#missing[@]}" -gt 0 ]]; then
+    sudo rpm-ostree install "\${missing[@]}"
+    OSTREE_LAYERED=1
+  fi
 }
 
 pacman_refresh() {
@@ -298,9 +322,14 @@ ensure_flatpak() {
     case "$DISTRO_ID" in
       ubuntu|debian) apt_install flatpak ;;
       fedora) dnf_install flatpak ;;
+      bazzite) rpm_ostree_install flatpak ;;
       arch|manjaro) pacman_install flatpak ;;
       *) warn "No Flatpak install mapping for $DISTRO_ID" ;;
     esac
+  fi
+  if ! have flatpak; then
+    warn "Flatpak is unavailable in this shell. If it was just layered with rpm-ostree, reboot and rerun this module."
+    return 1
   fi
   if have flatpak; then
     sudo flatpak remote-add --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
@@ -309,7 +338,7 @@ ensure_flatpak() {
 
 flatpak_install() {
   local ref="$1"
-  ensure_flatpak
+  ensure_flatpak || return 0
   if flatpak info "$ref" >/dev/null 2>&1; then
     echo "flatpak already installed: $ref"
   else
@@ -330,6 +359,9 @@ install_base_tools() {
     fedora)
       sudo dnf groupinstall -y "Development Tools" || true
       dnf_install android-tools ca-certificates clang cmake curl direnv file flatpak gcc gcc-c++ git gnupg2 jq fuse gtk3-devel xz-devel redhat-lsb-core make ninja-build openssh-clients pkgconf-pkg-config procps-ng python3 python3-pip pipx remmina rsync unzip wget xz zip which
+      ;;
+    bazzite)
+      rpm_ostree_install android-tools ca-certificates clang cmake curl direnv file flatpak gcc gcc-c++ git gnupg2 jq fuse gtk3-devel xz-devel lsb-release make ninja-build openssh-clients pkgconf-pkg-config procps-ng python3 python3-pip pipx rsync unzip wget xz zip which
       ;;
     arch|manjaro)
       pacman_install base-devel android-tools ca-certificates clang cmake curl direnv file flatpak gcc git gnupg jq fuse2 gtk3 xz lsb-release make ninja openssh pkgconf procps-ng python python-pip python-pipx remmina rsync unzip wget zip which
@@ -399,6 +431,9 @@ gpgkey=https://dl.google.com/linux/linux_signing_key.pub
 EOF
       dnf_install google-chrome-stable
       ;;
+    bazzite)
+      flatpak_install com.google.Chrome
+      ;;
     arch|manjaro)
       if have yay; then
         yay -S --needed --noconfirm google-chrome
@@ -435,6 +470,9 @@ gpgcheck=1
 gpgkey=https://packages.microsoft.com/keys/microsoft.asc
 EOF
       dnf_install code
+      ;;
+    bazzite)
+      flatpak_install com.visualstudio.code
       ;;
     arch|manjaro)
       if have yay; then yay -S --needed --noconfirm visual-studio-code-bin || pacman_install code; else pacman_install code; fi
@@ -492,11 +530,19 @@ install_docker() {
       sudo dnf config-manager addrepo --from-repofile=https://download.docker.com/linux/fedora/docker-ce.repo
       dnf_install docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
       ;;
+    bazzite)
+      warn "Bazzite is an atomic desktop. Docker Engine will be layered with rpm-ostree and needs a reboot before the service can start."
+      rpm_ostree_install moby-engine docker-compose
+      ;;
     arch|manjaro)
       pacman_install docker docker-compose
       ;;
   esac
-  sudo systemctl enable --now docker || true
+  if [[ "$DISTRO_ID" == "bazzite" && "$OSTREE_LAYERED" -eq 1 ]]; then
+    warn "Reboot, then run: sudo systemctl enable --now docker"
+  else
+    sudo systemctl enable --now docker || true
+  fi
   sudo usermod -aG docker "$USER" || true
 }
 
@@ -522,6 +568,10 @@ if [[ "$(id -u)" -eq 0 ]]; then
 fi
 
 ${blocks.join("\n")}
+
+if [[ "\${OSTREE_LAYERED:-0}" -eq 1 ]]; then
+  warn "rpm-ostree staged host package changes. Reboot before expecting those commands, services, or libraries to be available."
+fi
 
 ${authHints}
 

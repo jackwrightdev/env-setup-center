@@ -15,6 +15,11 @@ export const distroProfiles = [
     description: "DNF-first profile for Fedora Workstation-style systems."
   },
   {
+    id: "bazzite",
+    title: "Bazzite",
+    description: "Fedora Atomic/Bazzite profile using Flatpak, Homebrew, and rpm-ostree layering only where needed."
+  },
+  {
     id: "arch",
     title: "Arch Linux",
     description: "Pacman-first profile with AUR-helper fallbacks where needed."
@@ -32,7 +37,7 @@ export const installModules = [
     title: "Linux Base",
     scriptTitle: "Installing Linux base tools",
     description: "Core packages, build tools, Python, ADB/Fastboot, Flatpak, SSH, rsync, jq, FUSE, and Flutter Linux desktop dependencies.",
-    tags: ["apt", "dnf", "pacman"],
+    tags: ["apt", "dnf", "rpm-ostree", "pacman"],
     recommended: true
   },
   {
@@ -71,16 +76,16 @@ export const installModules = [
     id: "chrome",
     title: "Google Chrome",
     scriptTitle: "Installing Google Chrome",
-    description: "Installs Chrome through native repositories where available, with Chromium fallback on Arch-style systems.",
-    tags: ["browser", "native"],
+    description: "Installs Chrome through native repositories where available, Flatpak on Bazzite, with Chromium fallback on Arch-style systems.",
+    tags: ["browser", "native", "flatpak"],
     recommended: true
   },
   {
     id: "vscode",
     title: "VS Code",
     scriptTitle: "Installing Visual Studio Code",
-    description: "Installs VS Code through Microsoft repositories or Arch/Manjaro package tooling.",
-    tags: ["editor", "native"],
+    description: "Installs VS Code through Microsoft repositories, Flatpak on Bazzite, or Arch/Manjaro package tooling.",
+    tags: ["editor", "native", "flatpak"],
     recommended: true
   },
   {
@@ -236,6 +241,19 @@ export const vmTestSuites = [
       "Run Chrome and VS Code repo setup.",
       "Run Desktop Apps through Flatpak.",
       "Run Docker optional module and verify the docker service starts."
+    ]
+  },
+  {
+    id: "bazzite",
+    title: "Bazzite VM",
+    profile: "bazzite",
+    checks: [
+      "Run the AppImage directly or integrate it with Gear Lever.",
+      "Generate setup with Bazzite profile or verify auto-detect maps Bazzite to bazzite.",
+      "Run Linux Base and confirm rpm-ostree stages only missing host packages.",
+      "Reboot after any rpm-ostree layered packages, then rerun status checks.",
+      "Run Desktop Apps, Chrome, and VS Code and verify they install through Flatpak.",
+      "Run Homebrew-backed runtimes and CLIs without using dnf."
     ]
   },
   {
